@@ -3,8 +3,8 @@ package com.thomazcollet.usermanagementauthapp.service;
 import org.springframework.stereotype.Service;
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
-import com.thomazcollet.usermanagementauthapp.infrastructure.feign.ViaCepClient;
-import com.thomazcollet.usermanagementauthapp.infrastructure.feign.dto.ViaCepResponse;
+import com.thomazcollet.usermanagementauthapp.infra.feign.ViaCepClient;
+import com.thomazcollet.usermanagementauthapp.infra.feign.dto.ViaCepResponse;
 
 import lombok.RequiredArgsConstructor;
 
