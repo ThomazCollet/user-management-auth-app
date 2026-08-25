@@ -19,3 +19,13 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+
+    feign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+  integrations:
+    viacep:
+      url: https://viacep.com.br/ws

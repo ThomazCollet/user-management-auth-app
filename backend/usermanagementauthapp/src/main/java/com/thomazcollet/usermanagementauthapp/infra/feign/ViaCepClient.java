@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.thomazcollet.usermanagementauthapp.infra.feign.dto.ViaCepResponse;
 
-@FeignClient(name = "viaCepClient", url = "https://viacep.com.br/ws")
+@FeignClient(name = "viaCepClient", url = "${integrations.viacep.url}")
 public interface ViaCepClient {
 
     @GetMapping("/{zipCode}/json/")
