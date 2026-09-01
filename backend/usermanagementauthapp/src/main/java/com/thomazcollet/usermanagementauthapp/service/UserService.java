@@ -12,7 +12,10 @@ import com.thomazcollet.usermanagementauthapp.domain.entity.User;
 import com.thomazcollet.usermanagementauthapp.domain.enums.RoleName;
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
+import com.thomazcollet.usermanagementauthapp.dto.request.AddressRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.RegisterUserRequest;
+import com.thomazcollet.usermanagementauthapp.dto.request.UpdatePasswordRequest;
+import com.thomazcollet.usermanagementauthapp.dto.request.UpdateUserRequest;
 import com.thomazcollet.usermanagementauthapp.dto.response.AddressResponse;
 import com.thomazcollet.usermanagementauthapp.dto.response.UserProfileResponse;
 import com.thomazcollet.usermanagementauthapp.infra.feign.dto.ViaCepResponse;
@@ -96,8 +99,7 @@ public class UserService {
                     user.getAddress().getComplement(),
                     user.getAddress().getNeighborhood(),
                     user.getAddress().getCity(),
-                    user.getAddress().getState()
-            );
+                    user.getAddress().getState());
         }
 
         Set<String> roles = user.getRoles().stream()
@@ -114,7 +116,82 @@ public class UserService {
                 user.getBirthDate(),
                 user.getIsEmailVerified(),
                 addressResp,
-                roles
-        );
+                roles);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse findProfileById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+        return mapToUserProfileResponse(user);
+    }
+
+    @Transactional
+    public UserProfileResponse updateProfile(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+
+        // Substitui os 3 setters por um único método expressivo de domínio:
+        user.updateProfile(request.fullName(), request.phone(), request.birthDate());
+
+        User updatedUser = userRepository.save(user);
+        return mapToUserProfileResponse(updatedUser);
+    }
+
+    @Transactional
+    public void updatePassword(Long id, UpdatePasswordRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BusinessException("A senha atual informada está incorreta");
+        }
+
+        // Usa o método semântico já existente na entidade User:
+        user.updatePassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Usuário não encontrado com o ID: " + id);
+        }
+        userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public UserProfileResponse updateAddress(Long userId, AddressRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + userId));
+
+        ViaCepResponse viaCep = viaCepService.findAddressByZipCode(request.zipCode());
+
+        Address address = user.getAddress();
+        if (address == null) {
+            address = Address.builder()
+                    .zipCode(viaCep.cep())
+                    .street(viaCep.logradouro())
+                    .number(request.number())
+                    .complement(request.complement())
+                    .neighborhood(viaCep.bairro())
+                    .city(viaCep.localidade())
+                    .state(viaCep.uf())
+                    .build();
+            user.updateAddress(address);
+        } else {
+            // Atualização limpa via método de domínio da entidade Address:
+            address.updateDetails(
+                    viaCep.cep(),
+                    viaCep.logradouro(),
+                    request.number(),
+                    request.complement(),
+                    viaCep.bairro(),
+                    viaCep.localidade(),
+                    viaCep.uf());
+        }
+
+        User updatedUser = userRepository.save(user);
+        return mapToUserProfileResponse(updatedUser);
     }
 }

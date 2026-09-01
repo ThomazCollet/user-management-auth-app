@@ -139,4 +139,14 @@ public class User {
     public void deactivateAccount() {
         this.isActive = false;
     }
+
+    // ==========================================
+    // MÉTODOS DE NEGÓCIO E DOMÍNIO
+    // ==========================================
+
+    public void updateProfile(String fullName, String phone, LocalDate birthDate) {
+        this.fullName = fullName;
+        this.phone = phone;
+        this.birthDate = birthDate;
+    }
 }
