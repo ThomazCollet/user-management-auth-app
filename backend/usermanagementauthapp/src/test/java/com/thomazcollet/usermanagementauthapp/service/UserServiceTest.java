@@ -239,4 +239,93 @@ class UserServiceTest {
             verify(userRepository, never()).deleteById(any());
         }
     }
+
+    @Nested
+    @DisplayName("Tests for updateProfile")
+    class UpdateProfileTests {
+
+        @Test
+        @DisplayName("Should update user profile successfully when ID exists")
+        void givenExistingIdAndValidRequest_whenUpdateProfile_shouldReturnUpdatedProfile() {
+            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888", LocalDate.of(1995, 5, 5));
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(userRepository.save(any(User.class))).thenReturn(user);
+
+            UserProfileResponse response = userService.updateProfile(1L, request);
+
+            assertThat(response).isNotNull();
+            assertThat(user.getFullName()).isEqualTo("Thomaz Updated");
+            assertThat(user.getPhone()).isEqualTo("11888888888");
+            verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when updating non-existing profile")
+        void givenNonExistingId_whenUpdateProfile_shouldThrowResourceNotFoundException() {
+            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888", LocalDate.of(1995, 5, 5));
+
+            when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateProfile(99L, request))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Usuário não encontrado com o ID: 99");
+
+            verify(userRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests for updateAddress")
+    class UpdateAddressTests {
+
+        @Test
+        @DisplayName("Should update address details when user already has an address")
+        void givenUserWithAddress_whenUpdateAddress_shouldUpdateExistingAddress() {
+            AddressRequest addressReq = new AddressRequest("01001-000", "200", "Apto 12");
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(viaCepService.findAddressByZipCode(addressReq.zipCode())).thenReturn(viaCepResponse);
+            when(userRepository.save(any(User.class))).thenReturn(user);
+
+            UserProfileResponse response = userService.updateAddress(1L, addressReq);
+
+            assertThat(response).isNotNull();
+            assertThat(user.getAddress().getNumber()).isEqualTo("200");
+            assertThat(user.getAddress().getComplement()).isEqualTo("Apto 12");
+            verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("Should create new address when user does not have an address")
+        void givenUserWithoutAddress_whenUpdateAddress_shouldCreateAndAttachNewAddress() {
+            user.updateAddress(null); // Garante estado sem endereço
+            AddressRequest addressReq = new AddressRequest("01001-000", "300", null);
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(viaCepService.findAddressByZipCode(addressReq.zipCode())).thenReturn(viaCepResponse);
+            when(userRepository.save(any(User.class))).thenReturn(user);
+
+            UserProfileResponse response = userService.updateAddress(1L, addressReq);
+
+            assertThat(response).isNotNull();
+            assertThat(user.getAddress()).isNotNull();
+            assertThat(user.getAddress().getNumber()).isEqualTo("300");
+            verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when updating address of non-existing user")
+        void givenNonExistingUser_whenUpdateAddress_shouldThrowResourceNotFoundException() {
+            AddressRequest addressReq = new AddressRequest("01001-000", "100", null);
+
+            when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateAddress(99L, addressReq))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(viaCepService, never()).findAddressByZipCode(anyString());
+            verify(userRepository, never()).save(any());
+        }
+    }
 }
