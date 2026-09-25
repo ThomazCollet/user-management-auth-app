@@ -31,18 +31,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<UserProfileResponse> registerUser(@Valid @RequestBody RegisterUserRequest request) {
-        UserProfileResponse response = userService.registerUser(request);
-
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.id())
-                .toUri();
-
-        return ResponseEntity.created(location).body(response);
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileResponse> findProfileById(@PathVariable Long id) {
         UserProfileResponse response = userService.findProfileById(id);
