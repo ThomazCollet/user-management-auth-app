@@ -1,8 +1,11 @@
 package com.thomazcollet.usermanagementauthapp.controller;
 
+import com.thomazcollet.usermanagementauthapp.domain.entity.User;
 import com.thomazcollet.usermanagementauthapp.dto.request.LoginRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.RegisterUserRequest;
+import com.thomazcollet.usermanagementauthapp.dto.response.TokenResponse;
 import com.thomazcollet.usermanagementauthapp.dto.response.UserProfileResponse;
+import com.thomazcollet.usermanagementauthapp.security.TokenService;
 import com.thomazcollet.usermanagementauthapp.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +24,8 @@ import java.net.URI;
 public class AuthController {
 
     private final UserService userService;
-    private final AuthenticationManager authenticationManager; // Injeção do AuthenticationManager
+    private final AuthenticationManager authenticationManager;
+    private final TokenService tokenService; // 1. Injeção do TokenService
 
     @PostMapping("/register")
     public ResponseEntity<UserProfileResponse> register(@RequestBody @Valid RegisterUserRequest request) {
@@ -37,19 +41,27 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Void> login(@RequestBody @Valid LoginRequest request) {
-        // Cria o token de autenticação passando o 'login' (que pode ser email ou
-        // username) e a 'password'
+    public ResponseEntity<TokenResponse> login(@RequestBody @Valid LoginRequest request) {
         var usernamePasswordToken = new UsernamePasswordAuthenticationToken(
                 request.login(),
                 request.password());
 
-        // O AuthenticationManager valida as credenciais usando o seu UserDetailsService
+        // 1. O AuthenticationManager valida as credenciais
         Authentication authentication = authenticationManager.authenticate(usernamePasswordToken);
 
-        // Se a autenticação passar, o usuário é considerado válido.
-        // O próximo passo será gerar o Token JWT e retorná-lo para o cliente!
+        // 2. Extrai o usuário do principal
+        var userDetails = (com.thomazcollet.usermanagementauthapp.security.UserDetailsImpl) authentication
+                .getPrincipal();
+        User user = userDetails.getUser();
 
-        return ResponseEntity.ok().build();
+        // 3. Gera o token JWT
+        String token = tokenService.generateToken(user);
+
+        // 4. Retorna utilizando a sua TokenResponse robusta
+        // (Definindo por exemplo 7200 segundos equivalentes a 2 horas, ou o valor que
+        // configurou no TokenService)
+        TokenResponse response = new TokenResponse(token, 7200L);
+
+        return ResponseEntity.ok(response);
     }
 }
