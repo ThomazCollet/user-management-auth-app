@@ -81,10 +81,12 @@ public class User {
 
     @NotNull
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @NotNull
     @Column(name = "is_email_verified", nullable = false)
+    @Builder.Default
     private Boolean isEmailVerified = false;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -97,6 +99,8 @@ public class User {
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+
+    @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)

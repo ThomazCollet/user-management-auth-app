@@ -1,24 +1,21 @@
 package com.thomazcollet.usermanagementauthapp.controller;
 
-import java.net.URI;
-
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.thomazcollet.usermanagementauthapp.dto.request.AddressRequest;
-import com.thomazcollet.usermanagementauthapp.dto.request.RegisterUserRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.UpdatePasswordRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.UpdateUserRequest;
 import com.thomazcollet.usermanagementauthapp.dto.response.UserProfileResponse;
+import com.thomazcollet.usermanagementauthapp.security.UserDetailsImpl;
 import com.thomazcollet.usermanagementauthapp.service.UserService;
 
 import jakarta.validation.Valid;
@@ -31,39 +28,39 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponse> findProfileById(@PathVariable Long id) {
-        UserProfileResponse response = userService.findProfileById(id);
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal UserDetailsImpl principal) {
+        UserProfileResponse response = userService.findProfileById(principal.getUser().getId());
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<UserProfileResponse> updateProfile(
-            @PathVariable Long id,
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateMyProfile(
+            @AuthenticationPrincipal UserDetailsImpl principal,
             @Valid @RequestBody UpdateUserRequest request) {
-        UserProfileResponse response = userService.updateProfile(id, request);
+        UserProfileResponse response = userService.updateProfile(principal.getUser().getId(), request);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/{id}/password")
-    public ResponseEntity<Void> updatePassword(
-            @PathVariable Long id,
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> updateMyPassword(
+            @AuthenticationPrincipal UserDetailsImpl principal,
             @Valid @RequestBody UpdatePasswordRequest request) {
-        userService.updatePassword(id, request);
+        userService.updatePassword(principal.getUser().getId(), request);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/address")
-    public ResponseEntity<UserProfileResponse> updateAddress(
-            @PathVariable Long id,
+    @PutMapping("/me/address")
+    public ResponseEntity<UserProfileResponse> updateMyAddress(
+            @AuthenticationPrincipal UserDetailsImpl principal,
             @Valid @RequestBody AddressRequest request) {
-        UserProfileResponse response = userService.updateAddress(id, request);
+        UserProfileResponse response = userService.updateAddress(principal.getUser().getId(), request);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMyAccount(@AuthenticationPrincipal UserDetailsImpl principal) {
+        userService.deleteUser(principal.getUser().getId());
         return ResponseEntity.noContent().build();
     }
 }
