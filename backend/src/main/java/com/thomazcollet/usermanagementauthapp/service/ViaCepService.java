@@ -7,6 +7,7 @@ import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundE
 import com.thomazcollet.usermanagementauthapp.infra.feign.ViaCepClient;
 import com.thomazcollet.usermanagementauthapp.infra.feign.dto.ViaCepResponse;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -18,13 +19,21 @@ public class ViaCepService {
     public ViaCepResponse findAddressByZipCode(String rawZipCode) {
         String zipCode = sanitizeAndValidateZipCode(rawZipCode);
 
-        ViaCepResponse response = viaCepClient.getAddressByZipCode(zipCode);
+        try {
+            ViaCepResponse response = viaCepClient.getAddressByZipCode(zipCode);
 
-        if (response != null && Boolean.TRUE.equals(response.erro())) {
-            throw new ResourceNotFoundException("CEP não encontrado: " + rawZipCode);
+            // Se o ViaCEP retornar um objeto nulo ou com a flag erro = true
+            if (response == null || Boolean.TRUE.equals(response.erro())) {
+                throw new ResourceNotFoundException("CEP não encontrado: " + rawZipCode);
+            }
+
+            return response;
+        } catch (FeignException e) {
+            // Trata quedas ou instabilidades da API externa do ViaCEP (Retorna 503 ou
+            // BusinessException)
+            throw new BusinessException(
+                    "Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.");
         }
-
-        return response;
     }
 
     private String sanitizeAndValidateZipCode(String rawZipCode) {

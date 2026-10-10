@@ -57,10 +57,8 @@ public class AuthController {
         // 3. Gera o token JWT
         String token = tokenService.generateToken(user);
 
-        // 4. Retorna utilizando a sua TokenResponse robusta
-        // (Definindo por exemplo 7200 segundos equivalentes a 2 horas, ou o valor que
-        // configurou no TokenService)
-        TokenResponse response = new TokenResponse(token, 7200L);
+        // 4. Retorna utilizando o tempo de expiração dinâmico fornecido pelo TokenService
+        TokenResponse response = new TokenResponse(token, tokenService.getExpirationSeconds());
 
         return ResponseEntity.ok(response);
     }

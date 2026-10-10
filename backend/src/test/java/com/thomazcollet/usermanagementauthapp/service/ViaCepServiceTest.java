@@ -36,10 +36,9 @@ class ViaCepServiceTest {
     @BeforeEach
     void setUp() {
         validResponse = new ViaCepResponse(
-                "01001-000", "Praça da Sé", "lado ímpar", "Sé", 
-                "São Paulo", "SP", "São Paulo", "Sudoeste", 
-                "3550308", "1004", "11", "7107", false
-        );
+                "01001-000", "Praça da Sé", "lado ímpar", "Sé",
+                "São Paulo", "SP", "São Paulo", "Sudoeste",
+                "3550308", "1004", "11", "7107", false);
     }
 
     @Test
@@ -55,7 +54,7 @@ class ViaCepServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   "})
+    @ValueSource(strings = { "", "   " })
     @DisplayName("Should throw BusinessException when zip code is blank or empty")
     void givenBlankZipCode_whenFindAddressByZipCode_shouldThrowBusinessException(String invalidZipCode) {
         assertThatThrownBy(() -> viaCepService.findAddressByZipCode(invalidZipCode))
@@ -76,7 +75,7 @@ class ViaCepServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1234567", "123456789", "ABCDEFGH"})
+    @ValueSource(strings = { "1234567", "123456789", "ABCDEFGH" })
     @DisplayName("Should throw BusinessException when zip code does not have exactly 8 digits")
     void givenInvalidLengthZipCode_whenFindAddressByZipCode_shouldThrowBusinessException(String invalidZipCode) {
         assertThatThrownBy(() -> viaCepService.findAddressByZipCode(invalidZipCode))
@@ -90,13 +89,25 @@ class ViaCepServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when ViaCEP returns erro flag as true")
     void givenNonExistingZipCode_whenFindAddressByZipCode_shouldThrowResourceNotFoundException() {
         ViaCepResponse errorResponse = new ViaCepResponse(
-                null, null, null, null, null, null, null, null, null, null, null, null, true
-        );
+                null, null, null, null, null, null, null, null, null, null, null, null, true);
 
         when(viaCepClient.getAddressByZipCode("99999999")).thenReturn(errorResponse);
 
         assertThatThrownBy(() -> viaCepService.findAddressByZipCode("99999999"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("CEP não encontrado: 99999999");
+    }
+
+    @Test
+    @DisplayName("Should throw BusinessException when ViaCepClient throws FeignException")
+    void givenFeignException_whenFindAddressByZipCode_shouldThrowBusinessException() {
+        // Construtor genérico da FeignException(status, message)
+        when(viaCepClient.getAddressByZipCode("01001000"))
+                .thenThrow(new feign.FeignException(502, "Bad Gateway") {
+                });
+
+        assertThatThrownBy(() -> viaCepService.findAddressByZipCode("01001-000"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.");
     }
 }

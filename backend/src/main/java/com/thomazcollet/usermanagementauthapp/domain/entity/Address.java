@@ -37,9 +37,8 @@ public class Address {
     @Column(name = "zip_code", nullable = false, length = 9)
     private String zipCode;
 
-    @NotBlank
     @Size(max = 150)
-    @Column(name = "street", nullable = false, length = 150)
+    @Column(name = "street", length = 150)
     private String street;
 
     @Size(max = 20)
@@ -50,9 +49,8 @@ public class Address {
     @Column(name = "complement", length = 100)
     private String complement;
 
-    @NotBlank
     @Size(max = 100)
-    @Column(name = "neighborhood", nullable = false, length = 100)
+    @Column(name = "neighborhood", length = 100)
     private String neighborhood;
 
     @NotBlank

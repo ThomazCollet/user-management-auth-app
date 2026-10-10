@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: user-management-auth-app
@@ -20,19 +23,22 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-  feign:
-    client:
-      config:
-        default:
-          connectTimeout: 5000
-          readTimeout: 5000
+  # Correção do item 2.2: Prefixo correto para os timeouts do OpenFeign
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
 
 integrations:
   viacep:
     url: https://viacep.com.br/ws
 
-# Configuração customizada para o JWT
+# Configuração customizada para o JWT e tempo de expiração
 api:
   security:
     token:
       secret: ${JWT_SECRET:minha-chave-secreta-super-segura-padrao}
+      expiration-hours: 2 # Centralizado aqui para o TokenService ler se preferir!

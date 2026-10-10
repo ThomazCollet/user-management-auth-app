@@ -71,6 +71,20 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
+        // Intercepta falhas de comunicação com APIs externas via OpenFeign (ex: ViaCEP
+        // fora do ar) -> Retorna 502
+        @ExceptionHandler(feign.FeignException.class)
+        public ResponseEntity<StandardError> handleFeignException(feign.FeignException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.BAD_GATEWAY;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Erro de Comunicação Externa",
+                                "Serviço externo indisponível no momento. Tente novamente mais tarde.",
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
         // Intercepta falhas de validação das anotações do Jakarta (@NotBlank, @CPF,
         // @Email) nos Controllers
         @ExceptionHandler(MethodArgumentNotValidException.class)
