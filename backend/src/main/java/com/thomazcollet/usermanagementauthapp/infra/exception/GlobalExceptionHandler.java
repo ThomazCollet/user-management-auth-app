@@ -11,12 +11,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
+import com.thomazcollet.usermanagementauthapp.domain.exception.ExternalServiceException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
 import com.thomazcollet.usermanagementauthapp.dto.response.StandardError;
 import com.thomazcollet.usermanagementauthapp.dto.response.StandardError.FieldErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -71,8 +74,25 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de comunicação com APIs externas via OpenFeign (ex: ViaCEP
-        // fora do ar) -> Retorna 502
+        // Intercepta falhas de comunicação com serviços externos (ex: ViaCEP fora do
+        // ar) -> Retorna 503
+        @ExceptionHandler(ExternalServiceException.class)
+        public ResponseEntity<StandardError> handleExternalServiceException(ExternalServiceException ex,
+                        HttpServletRequest request) {
+                // Loga a causa raiz para fins de monitoramento e auditoria (timeout, DNS, 5xx)
+                log.warn("Falha em serviço externo [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+
+                HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Serviço Externo Indisponível",
+                                ex.getMessage(),
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta falhas genéricas do Feign caso ocorram fora dos services mapeados
+        // -> Retorna 502
         @ExceptionHandler(feign.FeignException.class)
         public ResponseEntity<StandardError> handleFeignException(feign.FeignException ex,
                         HttpServletRequest request) {
@@ -85,8 +105,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de validação das anotações do Jakarta (@NotBlank, @CPF,
-        // @Email) nos Controllers
+        // Intercepta falhas de validação das anotações do Jakarta nos Controllers
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<StandardError> handleValidationException(MethodArgumentNotValidException ex,
                         HttpServletRequest request) {

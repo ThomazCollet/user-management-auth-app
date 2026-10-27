@@ -3,6 +3,7 @@ package com.thomazcollet.usermanagementauthapp.service;
 import org.springframework.stereotype.Service;
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
+import com.thomazcollet.usermanagementauthapp.domain.exception.ExternalServiceException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
 import com.thomazcollet.usermanagementauthapp.infra.feign.ViaCepClient;
 import com.thomazcollet.usermanagementauthapp.infra.feign.dto.ViaCepResponse;
@@ -29,10 +30,10 @@ public class ViaCepService {
 
             return response;
         } catch (FeignException e) {
-            // Trata quedas ou instabilidades da API externa do ViaCEP (Retorna 503 ou
-            // BusinessException)
-            throw new BusinessException(
-                    "Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.");
+            // Trata quedas ou instabilidades da API externa do ViaCEP, preservando a causa
+            // raiz
+            throw new ExternalServiceException(
+                    "Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.", e);
         }
     }
 

@@ -99,15 +99,17 @@ class ViaCepServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw BusinessException when ViaCepClient throws FeignException")
-    void givenFeignException_whenFindAddressByZipCode_shouldThrowBusinessException() {
-        // Construtor genérico da FeignException(status, message)
+    @DisplayName("Should throw ExternalServiceException with cause when ViaCepClient throws FeignException")
+    void givenFeignException_whenFindAddressByZipCode_shouldThrowExternalServiceException() {
+        feign.FeignException feignException = new feign.FeignException(502, "Bad Gateway") {
+        };
+
         when(viaCepClient.getAddressByZipCode("01001000"))
-                .thenThrow(new feign.FeignException(502, "Bad Gateway") {
-                });
+                .thenThrow(feignException);
 
         assertThatThrownBy(() -> viaCepService.findAddressByZipCode("01001-000"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.");
+                .isInstanceOf(com.thomazcollet.usermanagementauthapp.domain.exception.ExternalServiceException.class)
+                .hasMessage("Serviço de consulta de CEP indisponível no momento. Tente novamente mais tarde.")
+                .hasCause(feignException); // Garante que a causa raiz foi preservada!
     }
 }
