@@ -1,20 +1,25 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: user-management-auth-app
 
+  # Carrega o arquivo .env (se existir) na raiz de execução (pasta backend/).
+  # Em produção/Docker as variáveis vêm do ambiente e o arquivo é ignorado.
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: postgrespassword
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:auth_db}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate # Deixa o gerenciamento da estrutura das tabelas para o Flyway!
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
@@ -23,7 +28,6 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-  # Correção do item 2.2: Prefixo correto para os timeouts do OpenFeign
   cloud:
     openfeign:
       client:
@@ -34,11 +38,11 @@ spring:
 
 integrations:
   viacep:
-    url: https://viacep.com.br/ws
+    url: ${VIACEP_URL:https://viacep.com.br/ws}
 
 # Configuração customizada para o JWT e tempo de expiração
 api:
   security:
     token:
-      secret: ${JWT_SECRET:minha-chave-secreta-super-segura-padrao}
-      expiration-hours: 2 # Centralizado aqui para o TokenService ler se preferir!
+      secret: ${JWT_SECRET} # Sem valor padrão: a aplicação não sobe sem o segredo
+      expiration-hours: ${JWT_EXPIRATION_HOURS:2}
