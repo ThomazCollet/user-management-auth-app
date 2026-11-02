@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -33,19 +32,19 @@ public class SecurityFilter extends OncePerRequestFilter {
             String login = tokenService.validateToken(token);
 
             if (!login.isEmpty()) {
-                // 3. Busca o usuário no banco de dados com base no login do token
-                var user = userRepository.findByUsernameOrEmail(login, login)
-                        .orElseThrow(() -> new UsernameNotFoundException("Usuário do token não encontrado"));
+                // 3. Busca o usuário no banco de dados. Se não existir (ex: foi deletado),
+                // apenas não autenticamos, permitindo que o fluxo siga sem estourar exceção.
+                userRepository.findByUsernameOrEmail(login, login).ifPresent(user -> {
+                    // 4. Cria o objeto de autenticação do Spring Security usando o UserDetailsImpl
+                    var userDetails = new UserDetailsImpl(user);
+                    var authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
 
-                // 4. Cria o objeto de autenticação do Spring Security usando o UserDetailsImpl
-                var userDetails = new UserDetailsImpl(user);
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-
-                // 5. Salva a autenticação no contexto do Spring Security
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // 5. Salva a autenticação no contexto do Spring Security
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
             }
         }
 

@@ -5,11 +5,13 @@ import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ConflictException;
@@ -19,6 +21,7 @@ import com.thomazcollet.usermanagementauthapp.dto.response.StandardError;
 import com.thomazcollet.usermanagementauthapp.dto.response.StandardError.FieldErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -48,8 +51,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta conflitos de negócio (ex: registro duplicado por concorrência) ->
-        // Retorna 409
+        // Intercepta conflitos de negócio (ex: registro duplicado por concorrência) -> Retorna 409
         @ExceptionHandler({ ConflictException.class, DataIntegrityViolationException.class })
         public ResponseEntity<StandardError> handleConflictException(Exception ex, HttpServletRequest request) {
                 log.warn("Violação de unicidade ou conflito de dados [{}]: {}", request.getRequestURI(),
@@ -67,8 +69,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de autenticação (senha errada, usuário inativo, etc.) ->
-        // Retorna 401
+        // Intercepta falhas de autenticação (senha errada, usuário inativo, etc.) -> Retorna 401
         @ExceptionHandler(AuthenticationException.class)
         public ResponseEntity<StandardError> handleAuthenticationException(AuthenticationException ex,
                         HttpServletRequest request) {
@@ -81,8 +82,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta tentativas de acesso a recursos sem a devida permissão/role ->
-        // Retorna 403
+        // Intercepta tentativas de acesso a recursos sem a devida permissão/role -> Retorna 403
         @ExceptionHandler(AccessDeniedException.class)
         public ResponseEntity<StandardError> handleAccessDeniedException(AccessDeniedException ex,
                         HttpServletRequest request) {
@@ -95,8 +95,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de comunicação com serviços externos (ex: ViaCEP fora do
-        // ar) -> Retorna 503
+        // Intercepta falhas de comunicação com serviços externos (ex: ViaCEP fora do ar) -> Retorna 503
         @ExceptionHandler(ExternalServiceException.class)
         public ResponseEntity<StandardError> handleExternalServiceException(ExternalServiceException ex,
                         HttpServletRequest request) {
@@ -111,8 +110,7 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas genéricas do Feign caso ocorram fora dos services mapeados
-        // -> Retorna 502
+        // Intercepta falhas genéricas do Feign caso ocorram fora dos services mapeados -> Retorna 502
         @ExceptionHandler(feign.FeignException.class)
         public ResponseEntity<StandardError> handleFeignException(feign.FeignException ex,
                         HttpServletRequest request) {
@@ -125,7 +123,49 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de validação das anotações do Jakarta nos Controllers
+        // Intercepta JSON malformado ou ilegível -> Retorna 400
+        @ExceptionHandler(HttpMessageNotReadableException.class)
+        public ResponseEntity<StandardError> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.BAD_REQUEST;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Corpo da Requisição Inválido",
+                                "O corpo da requisição está malformado ou contém um JSON inválido.",
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta erros de tipo de parâmetro (ex: passar string em ID numérico) -> Retorna 400
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<StandardError> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.BAD_REQUEST;
+                String message = String.format("O parâmetro '%s' recebeu o valor '%s', que é de um tipo inválido.",
+                                ex.getName(), ex.getValue());
+
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Parâmetro Inválido",
+                                message,
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta violações de restrições em parâmetros de URL/método -> Retorna 400
+        @ExceptionHandler(ConstraintViolationException.class)
+        public ResponseEntity<StandardError> handleConstraintViolation(ConstraintViolationException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.BAD_REQUEST;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Erro de Validação",
+                                ex.getMessage(),
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta falhas de validação das anotações do Jakarta nos Controllers -> Retorna 400
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<StandardError> handleValidationException(MethodArgumentNotValidException ex,
                         HttpServletRequest request) {
@@ -145,9 +185,11 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Fallback para exceções genéricas não tratadas
+        // Fallback para exceções genéricas não tratadas (agora com log.error completo) -> Retorna 500
         @ExceptionHandler(Exception.class)
         public ResponseEntity<StandardError> handleGenericException(Exception ex, HttpServletRequest request) {
+                log.error("Erro interno não tratado [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+
                 HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
                 StandardError error = StandardError.simple(
                                 status.value(),
