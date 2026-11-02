@@ -35,7 +35,12 @@ public class UserService {
 
     @Transactional
     public UserProfileResponse registerUser(RegisterUserRequest request) {
-        validateUniqueFields(request);
+        // 1. Normaliza os dados críticos (CPF apenas dígitos, E-mail minúsculo)
+        String normalizedCpf = request.cpf() != null ? request.cpf().replaceAll("\\D", "") : null;
+        String normalizedEmail = request.email() != null ? request.email().trim().toLowerCase() : null;
+
+        // 2. Valida a unicidade usando os valores normalizados
+        validateUniqueFields(normalizedCpf, normalizedEmail, request.username());
 
         // Busca endereço via ViaCEP e monta a entidade Address
         ViaCepResponse viaCep = viaCepService.findAddressByZipCode(request.address().zipCode());
@@ -45,11 +50,11 @@ public class UserService {
         Role defaultRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseThrow(() -> new ResourceNotFoundException("Role padrão ROLE_USER não encontrada"));
 
-        // Cria a entidade User
+        // Cria a entidade User com os dados normalizados
         User user = User.builder()
                 .fullName(request.fullName())
-                .cpf(request.cpf())
-                .email(request.email())
+                .cpf(normalizedCpf) // CPF limpo (ex: 12345678909)
+                .email(normalizedEmail) // E-mail em minúsculas
                 .username(request.username())
                 .password(passwordEncoder.encode(request.password()))
                 .phone(request.phone())
@@ -64,14 +69,14 @@ public class UserService {
         return mapToUserProfileResponse(savedUser);
     }
 
-    private void validateUniqueFields(RegisterUserRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
+    private void validateUniqueFields(String cpf, String email, String username) {
+        if (userRepository.existsByEmail(email)) {
             throw new BusinessException("E-mail já cadastrado no sistema");
         }
-        if (userRepository.existsByUsername(request.username())) {
+        if (userRepository.existsByUsername(username)) {
             throw new BusinessException("Nome de usuário já cadastrado no sistema");
         }
-        if (userRepository.existsByCpf(request.cpf())) {
+        if (userRepository.existsByCpf(cpf)) {
             throw new BusinessException("CPF já cadastrado no sistema");
         }
     }

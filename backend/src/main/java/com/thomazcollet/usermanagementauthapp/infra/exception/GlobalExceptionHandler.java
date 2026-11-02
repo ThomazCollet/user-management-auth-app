@@ -2,6 +2,7 @@ package com.thomazcollet.usermanagementauthapp.infra.exception;
 
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
+import com.thomazcollet.usermanagementauthapp.domain.exception.ConflictException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ExternalServiceException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
 import com.thomazcollet.usermanagementauthapp.dto.response.StandardError;
@@ -42,6 +44,25 @@ public class GlobalExceptionHandler {
                                 status.value(),
                                 "Regra de Negócio Violada",
                                 ex.getMessage(),
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta conflitos de negócio (ex: registro duplicado por concorrência) ->
+        // Retorna 409
+        @ExceptionHandler({ ConflictException.class, DataIntegrityViolationException.class })
+        public ResponseEntity<StandardError> handleConflictException(Exception ex, HttpServletRequest request) {
+                log.warn("Violação de unicidade ou conflito de dados [{}]: {}", request.getRequestURI(),
+                                ex.getMessage());
+
+                HttpStatus status = HttpStatus.CONFLICT;
+                String message = ex instanceof ConflictException ? ex.getMessage()
+                                : "Já existe um registro com os dados informados no sistema.";
+
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Conflito de Dados",
+                                message,
                                 request.getRequestURI());
                 return ResponseEntity.status(status).body(error);
         }
@@ -79,7 +100,6 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(ExternalServiceException.class)
         public ResponseEntity<StandardError> handleExternalServiceException(ExternalServiceException ex,
                         HttpServletRequest request) {
-                // Loga a causa raiz para fins de monitoramento e auditoria (timeout, DNS, 5xx)
                 log.warn("Falha em serviço externo [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
 
                 HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
