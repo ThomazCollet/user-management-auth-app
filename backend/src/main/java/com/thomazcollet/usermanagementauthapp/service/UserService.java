@@ -1,5 +1,6 @@
 package com.thomazcollet.usermanagementauthapp.service;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,7 +51,7 @@ public class UserService {
         Role defaultRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseThrow(() -> new ResourceNotFoundException("Role padrão ROLE_USER não encontrada"));
 
-        // Cria a entidade User com os dados normalizados
+        // Cria a entidade User com os dados normalizados (roles mutável com HashSet)
         User user = User.builder()
                 .fullName(request.fullName())
                 .cpf(normalizedCpf) // CPF limpo (ex: 12345678909)
@@ -61,7 +62,7 @@ public class UserService {
                 .birthDate(request.birthDate())
                 .isEmailVerified(false)
                 .address(address)
-                .roles(Set.of(defaultRole))
+                .roles(new HashSet<>(Set.of(defaultRole))) // Alterado para HashSet mutável
                 .build();
 
         User savedUser = userRepository.save(user);
