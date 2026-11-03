@@ -6,8 +6,10 @@ target/
 
 ### Segredos e configuração local (NUNCA versionar) ###
 .env
-.env.*
-!.env.example
+.env.local
+.env.development
+.env.production
+.env.test
 application-local.yml
 application-local.properties
 
