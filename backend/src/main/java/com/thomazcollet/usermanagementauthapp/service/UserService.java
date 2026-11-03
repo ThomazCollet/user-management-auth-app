@@ -12,6 +12,7 @@ import com.thomazcollet.usermanagementauthapp.domain.entity.Role;
 import com.thomazcollet.usermanagementauthapp.domain.entity.User;
 import com.thomazcollet.usermanagementauthapp.domain.enums.RoleName;
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
+import com.thomazcollet.usermanagementauthapp.domain.exception.ConflictException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
 import com.thomazcollet.usermanagementauthapp.dto.request.AddressRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.RegisterUserRequest;
@@ -72,13 +73,13 @@ public class UserService {
 
     private void validateUniqueFields(String cpf, String email, String username) {
         if (userRepository.existsByEmail(email)) {
-            throw new BusinessException("E-mail já cadastrado no sistema");
+            throw new ConflictException("E-mail já cadastrado no sistema");
         }
         if (userRepository.existsByUsername(username)) {
-            throw new BusinessException("Nome de usuário já cadastrado no sistema");
+            throw new ConflictException("Nome de usuário já cadastrado no sistema");
         }
         if (userRepository.existsByCpf(cpf)) {
-            throw new BusinessException("CPF já cadastrado no sistema");
+            throw new ConflictException("CPF já cadastrado no sistema");
         }
     }
 

@@ -18,9 +18,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-        // Busca o usuário no banco verificando se o 'identifier' bate com o username OU
-        // com o email
-        User user = userRepository.findByUsernameOrEmail(identifier, identifier)
+        // 1. Limpa espaços extras
+        String login = identifier != null ? identifier.trim() : "";
+
+        // 2. Busca o usuário considerando o username exato e o e-mail em minúsculas
+        // (normalizado)
+        User user = userRepository.findByUsernameOrEmail(login, login.toLowerCase())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o login: " + identifier));
 
         return new UserDetailsImpl(user);

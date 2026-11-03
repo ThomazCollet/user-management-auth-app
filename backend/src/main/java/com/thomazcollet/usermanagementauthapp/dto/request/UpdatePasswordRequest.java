@@ -4,10 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdatePasswordRequest(
-        @NotBlank(message = "A senha atual é obrigatória")
-        String currentPassword,
+                @NotBlank(message = "A senha atual é obrigatória") String currentPassword,
 
-        @NotBlank(message = "A nova senha é obrigatória")
-        @Size(min = 8, message = "A nova senha deve ter no mínimo 8 caracteres")
-        String newPassword
-) {}
+                @NotBlank(message = "A nova senha é obrigatória") @Size(min = 8, max = 50, message = "A nova senha deve ter entre 8 e 50 caracteres") String newPassword) {
+}

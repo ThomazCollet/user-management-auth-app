@@ -8,10 +8,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException; // Importação essencial para o 404
 
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ConflictException;
@@ -40,6 +43,46 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
+        // Intercepta rotas inexistentes -> Retorna 404 limpo
+        @ExceptionHandler(NoResourceFoundException.class)
+        public ResponseEntity<StandardError> handleNoResourceFound(NoResourceFoundException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Recurso Não Encontrado",
+                                "O endereço solicitado não existe.",
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta métodos HTTP não suportados (ex: GET em rota que só aceita POST)
+        // -> Retorna 405
+        @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+        public ResponseEntity<StandardError> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Método Não Permitido",
+                                "O método HTTP " + ex.getMethod() + " não é suportado para esta rota.",
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
+        // Intercepta Content-Type incompatível -> Retorna 415
+        @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+        public ResponseEntity<StandardError> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex,
+                        HttpServletRequest request) {
+                HttpStatus status = HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+                StandardError error = StandardError.simple(
+                                status.value(),
+                                "Tipo de Mídia Não Suportado",
+                                "O tipo de conteúdo enviado não é suportado por este endpoint.",
+                                request.getRequestURI());
+                return ResponseEntity.status(status).body(error);
+        }
+
         @ExceptionHandler(BusinessException.class)
         public ResponseEntity<StandardError> handleBusinessException(BusinessException ex, HttpServletRequest request) {
                 HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
@@ -51,7 +94,8 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta conflitos de negócio (ex: registro duplicado por concorrência) -> Retorna 409
+        // Intercepta conflitos de negócio (ex: registro duplicado por concorrência) ->
+        // Retorna 409
         @ExceptionHandler({ ConflictException.class, DataIntegrityViolationException.class })
         public ResponseEntity<StandardError> handleConflictException(Exception ex, HttpServletRequest request) {
                 log.warn("Violação de unicidade ou conflito de dados [{}]: {}", request.getRequestURI(),
@@ -69,7 +113,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de autenticação (senha errada, usuário inativo, etc.) -> Retorna 401
         @ExceptionHandler(AuthenticationException.class)
         public ResponseEntity<StandardError> handleAuthenticationException(AuthenticationException ex,
                         HttpServletRequest request) {
@@ -82,7 +125,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta tentativas de acesso a recursos sem a devida permissão/role -> Retorna 403
         @ExceptionHandler(AccessDeniedException.class)
         public ResponseEntity<StandardError> handleAccessDeniedException(AccessDeniedException ex,
                         HttpServletRequest request) {
@@ -95,7 +137,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de comunicação com serviços externos (ex: ViaCEP fora do ar) -> Retorna 503
         @ExceptionHandler(ExternalServiceException.class)
         public ResponseEntity<StandardError> handleExternalServiceException(ExternalServiceException ex,
                         HttpServletRequest request) {
@@ -110,7 +151,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas genéricas do Feign caso ocorram fora dos services mapeados -> Retorna 502
         @ExceptionHandler(feign.FeignException.class)
         public ResponseEntity<StandardError> handleFeignException(feign.FeignException ex,
                         HttpServletRequest request) {
@@ -123,7 +163,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta JSON malformado ou ilegível -> Retorna 400
         @ExceptionHandler(HttpMessageNotReadableException.class)
         public ResponseEntity<StandardError> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
                         HttpServletRequest request) {
@@ -136,7 +175,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta erros de tipo de parâmetro (ex: passar string em ID numérico) -> Retorna 400
         @ExceptionHandler(MethodArgumentTypeMismatchException.class)
         public ResponseEntity<StandardError> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex,
                         HttpServletRequest request) {
@@ -152,7 +190,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta violações de restrições em parâmetros de URL/método -> Retorna 400
         @ExceptionHandler(ConstraintViolationException.class)
         public ResponseEntity<StandardError> handleConstraintViolation(ConstraintViolationException ex,
                         HttpServletRequest request) {
@@ -165,7 +202,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Intercepta falhas de validação das anotações do Jakarta nos Controllers -> Retorna 400
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<StandardError> handleValidationException(MethodArgumentNotValidException ex,
                         HttpServletRequest request) {
@@ -185,7 +221,6 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(status).body(error);
         }
 
-        // Fallback para exceções genéricas não tratadas (agora com log.error completo) -> Retorna 500
         @ExceptionHandler(Exception.class)
         public ResponseEntity<StandardError> handleGenericException(Exception ex, HttpServletRequest request) {
                 log.error("Erro interno não tratado [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
