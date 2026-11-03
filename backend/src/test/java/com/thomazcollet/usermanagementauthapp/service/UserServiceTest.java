@@ -27,6 +27,7 @@ import com.thomazcollet.usermanagementauthapp.domain.entity.Role;
 import com.thomazcollet.usermanagementauthapp.domain.entity.User;
 import com.thomazcollet.usermanagementauthapp.domain.enums.RoleName;
 import com.thomazcollet.usermanagementauthapp.domain.exception.BusinessException;
+import com.thomazcollet.usermanagementauthapp.domain.exception.ConflictException;
 import com.thomazcollet.usermanagementauthapp.domain.exception.ResourceNotFoundException;
 import com.thomazcollet.usermanagementauthapp.dto.request.AddressRequest;
 import com.thomazcollet.usermanagementauthapp.dto.request.RegisterUserRequest;
@@ -135,8 +136,8 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("Should throw BusinessException when email is already registered")
-        void givenExistingEmail_whenRegisterUser_shouldThrowBusinessException() {
+        @DisplayName("Should throw ConflictException when email is already registered")
+        void givenExistingEmail_whenRegisterUser_shouldThrowConflictException() {
             RegisterUserRequest request = new RegisterUserRequest(
                     "Thomaz Collet", "12345678901", "thomaz@email.com",
                     "thomazc", "secret123", "11999999999",
@@ -145,8 +146,45 @@ class UserServiceTest {
             when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
             assertThatThrownBy(() -> userService.registerUser(request))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(ConflictException.class)
                     .hasMessage("E-mail já cadastrado no sistema");
+
+            verify(userRepository, never()).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ConflictException when username is already registered")
+        void givenExistingUsername_whenRegisterUser_shouldThrowConflictException() {
+            RegisterUserRequest request = new RegisterUserRequest(
+                    "Thomaz Collet", "12345678901", "thomaz@email.com",
+                    "thomazc", "secret123", "11999999999",
+                    LocalDate.of(2000, 1, 1), new AddressRequest("01001-000", "100", null));
+
+            when(userRepository.existsByEmail(request.email())).thenReturn(false);
+            when(userRepository.existsByUsername(request.username())).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.registerUser(request))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessage("Nome de usuário já cadastrado no sistema");
+
+            verify(userRepository, never()).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ConflictException when cpf is already registered")
+        void givenExistingCpf_whenRegisterUser_shouldThrowConflictException() {
+            RegisterUserRequest request = new RegisterUserRequest(
+                    "Thomaz Collet", "12345678901", "thomaz@email.com",
+                    "thomazc", "secret123", "11999999999",
+                    LocalDate.of(2000, 1, 1), new AddressRequest("01001-000", "100", null));
+
+            when(userRepository.existsByEmail(request.email())).thenReturn(false);
+            when(userRepository.existsByUsername(request.username())).thenReturn(false);
+            when(userRepository.existsByCpf("12345678901")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.registerUser(request))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessage("CPF já cadastrado no sistema");
 
             verify(userRepository, never()).save(any(User.class));
         }
@@ -247,7 +285,8 @@ class UserServiceTest {
         @Test
         @DisplayName("Should update user profile successfully when ID exists")
         void givenExistingIdAndValidRequest_whenUpdateProfile_shouldReturnUpdatedProfile() {
-            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888", LocalDate.of(1995, 5, 5));
+            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888",
+                    LocalDate.of(1995, 5, 5));
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
             when(userRepository.save(any(User.class))).thenReturn(user);
@@ -263,7 +302,8 @@ class UserServiceTest {
         @Test
         @DisplayName("Should throw ResourceNotFoundException when updating non-existing profile")
         void givenNonExistingId_whenUpdateProfile_shouldThrowResourceNotFoundException() {
-            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888", LocalDate.of(1995, 5, 5));
+            UpdateUserRequest request = new UpdateUserRequest("Thomaz Updated", "11888888888",
+                    LocalDate.of(1995, 5, 5));
 
             when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
